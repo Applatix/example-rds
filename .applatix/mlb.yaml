@@ -1,6 +1,5 @@
 ---
-type: service_template
-subtype: container
+type: container
 name: MLB data loader
 description: Base MLB mysql data loader
 container:
@@ -23,8 +22,7 @@ inputs:
     password:
 
 ---
-type: service_template
-subtype: container
+type: container
 name: phpmyadmin-container
 container:
   resources:
@@ -37,8 +35,7 @@ inputs:
     dbhost:
 
 ---
-type: service_template
-subtype: deployment
+type: deployment
 name: MLB phpMyAdmin deployment
 description: Base phpMyAdmin deployment
 inputs:
@@ -73,8 +70,7 @@ termination_policy:
   spending_cents: "100"
 
 ---
-type: service_template
-subtype: workflow
+type: workflow
 name: MLB data workflow
 description: This is the workflow to load MLB data to AWS RDS instance
 inputs:
@@ -99,8 +95,7 @@ steps:
       template: MLB phpMyAdmin deployment
 
 ---
-type: service_template
-subtype: workflow
+type: workflow
 name: MLB data workflow with static fixture
 description: This is the workflow to load MLB data to AWS RDS instance
 inputs:

@@ -1,0 +1,120 @@
+---
+type: service_template
+subtype: container
+name: RDS deployment
+description: AWS RDS worker to create RDS instance from a YAML file
+container:
+  resources:
+    mem_mib: 1024
+    cpu_cores: 0.1
+  image: "python:3.5.2"
+  command: sh -c 'pip3 install boto3 && pip3 install pyyaml && python3 /src/rds_tools.py create
+               --aws_access_key_id %%aws_access_key_id%%
+               --aws_secret_access_key %%aws_secret_access_key%%
+               --aws_region %%aws_region%%
+               --dbtype %%dbtype%%
+               --master_user_password %%master_user_password%%
+               --response %%response%%'
+inputs:
+  artifacts:
+  - from: "%%code%%"
+    path: "/src"
+  parameters:
+    code:
+    aws_access_key_id:
+    aws_secret_access_key:
+    aws_region:
+    dbtype:
+    master_user_password:
+    response:
+outputs:
+  artifacts:
+    rds_response:
+      path: "%%response%%"
+
+---
+type: service_template
+subtype: container
+name: RDS teardown
+description: AWS RDS worker to tear down a RDS instance
+container:
+  resources:
+    mem_mib: 1024
+    cpu_cores: 0.1
+  image: "python:3.5.2"
+  command: sh -c 'pip3 install boto3 && pip3 install pyyaml && python3 /src/rds_tools.py delete
+               --aws_access_key_id %%aws_access_key_id%%
+               --aws_secret_access_key %%aws_secret_access_key%%
+               --aws_region %%aws_region%%
+               --db_instance %%db_instance%%'
+inputs:
+  artifacts:
+  - from: "%%code%%"
+    path: "/src"
+  parameters:
+    code:
+    aws_access_key_id:
+    aws_secret_access_key:
+    aws_region:
+    db_instance:
+
+---
+type: service_template
+subtype: workflow
+name: Create RDS
+description: This is the workflow to create AWS RDS instance
+inputs:
+  parameters:
+    commit:
+      default: "%%session.commit%%"
+    repo:
+      default: "%%session.repo%%"
+    aws_access_key_id:
+      description: Encrypted aws_access_key_id on Dev cluster
+      default: "%%secrets.xxxxxxxx%%"
+    aws_secret_access_key:
+      description: Encrypted aws_secret_access_key on Dev cluster
+      default: "%%secrets.xxxxxxxx%%"
+    aws_region:
+      default: "us-west-2"
+    dbtype:
+      default: "mysql"
+    master_user_password:
+      default: "%%secrets.xxxxxxxx%%"
+    response:
+      default: "/src/rdsinfo.txt"
+steps:
+  - checkout:
+      template: axscm-checkout
+  - create:
+      template: RDS deployment
+      parameters:
+        code: "%%steps.checkout.code%%"
+
+---
+type: service_template
+subtype: workflow
+name: Teardown RDS
+description: This is the workflow to tear down AWS RDS instance
+inputs:
+  parameters:
+    commit:
+      default: "%%session.commit%%"
+    repo:
+      default: "%%session.repo%%"
+    aws_access_key_id:
+      description: Encrypted aws_access_key_id on Dev cluster
+      default: "%%secrets.xxxxxxxx%%"
+    aws_secret_access_key:
+      description: Encrypted aws_secret_access_key on Dev cluster
+      default: "%%secrets.xxxxxxxx%%"
+    aws_region:
+      default: "us-west-2"
+    db_instance:
+steps:
+  - checkout:
+      template: axscm-checkout
+  - teardown:
+      template: RDS teardown
+      parameters:
+        code: "%%steps.checkout.code%%"

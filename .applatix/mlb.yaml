@@ -1,0 +1,130 @@
+---
+type: service_template
+subtype: container
+name: MLB data loader
+description: Base MLB mysql data loader
+container:
+  resources:
+    mem_mib: 512
+    cpu_cores: 0.1
+  image: "python:3.5.2"
+  command: sh -c 'pip3 install mysqlclient && pip3 install requests && python3 /src/mysql_data_example.py
+               --dbhost %%dbhost%%
+               --username %%username%%
+               --password %%password%%'
+inputs:
+  artifacts:
+  - from: "%%code%%"
+    path: "/src"
+  parameters:
+    code:
+    dbhost:
+    username:
+    password:
+
+---
+type: service_template
+subtype: container
+name: phpmyadmin-container
+container:
+  resources:
+    mem_mib: 512
+    cpu_cores: 0.1
+  image: "phpmyadmin/phpmyadmin:latest"
+  docker_options: "-e PMA_HOST=%%dbhost%%"
+inputs:
+  parameters:
+    dbhost:
+
+---
+type: service_template
+subtype: deployment
+name: MLB phpMyAdmin deployment
+description: Base phpMyAdmin deployment
+inputs:
+  parameters:
+    appname:
+      default: "phpmyadmin"
+    domain:
+      default: "skynet.applatix.net"
+    dbhost:
+application:
+  name: "%%appname%%"
+deployment:
+  name: "phpmyadmin-deploy"
+scale:
+  min: 1
+external_routes:
+  - name: example
+    dns_prefix:
+    dns_domain: "%%domain%%"
+    port: 80
+    target_port: 80
+    redirect_http_to_https: true
+    ip_white_list:
+      - 0.0.0.0/0
+containers:
+  - server:
+      template: phpmyadmin-container
+      paramenters:
+        dbhost:
+termination_policy:
+  time_seconds: "3600"
+  spending_cents: "100"
+
+---
+type: service_template
+subtype: workflow
+name: MLB data workflow
+description: This is the workflow to load MLB data to AWS RDS instance
+inputs:
+  parameters:
+    commit:
+      default: "%%session.commit%%"
+    repo:
+      default: "%%session.repo%%"
+    dbhost:
+    username:
+      default: "root"
+    password:
+      default: "%%secrets.xxxxxxxx%%"
+steps:
+  - checkout:
+      template: axscm-checkout
+  - insert-data:
+      template: MLB data loader
+      parameters:
+        code: "%%steps.checkout.code%%"
+  - deploy-phpmyadmin:
+      template: MLB phpMyAdmin deployment
+
+---
+type: service_template
+subtype: workflow
+name: MLB data workflow with static fixture
+description: This is the workflow to load MLB data to AWS RDS instance
+inputs:
+  parameters:
+    commit:
+      default: "%%session.commit%%"
+    repo:
+      default: "%%session.repo%%"
+    dbhost:
+      default: "%%fixtures.examplesqldb.hostname%%"
+    username:
+      default: "root"
+    password:
+      default: "%%secrets.xxxxxxxx%%"
+fixtures:
+  - examplesqldb:
+      category: AWS RDS MySQL
+      name: "mysql_demo"
+steps:
+  - checkout:
+      template: axscm-checkout
+  - insert-data:
+      template: MLB data loader
+      parameters:
+        code: "%%steps.checkout.code%%"
+  - deploy-phpmyadmin:
+      template: MLB phpMyAdmin deployment

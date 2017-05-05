@@ -1,0 +1,21 @@
+# Please check https://boto3.readthedocs.io/en/latest/reference/services/rds.html#RDS.Client.create_db_instance
+# for more parameters
+DBName: axexample
+DBInstanceIdentifier: RDSMySQLExample  # Will append UUID after this identifier
+AllocatedStorage: 10
+DBInstanceClass: db.t2.small
+Engine: mysql
+MasterUsername: root
+VpcSecurityGroupIds:
+  - null  # Will automatically generate a SG open to 0.0.0.0/0 with port 3306, if it is null
+Port: 3306
+MultiAZ: True
+EngineVersion: 5.7.11
+PubliclyAccessible: True
+Tags:
+  - Key: ax
+    Value: ax
+StorageType: standard
+StorageEncrypted: False
+CopyTagsToSnapshot: False
+
